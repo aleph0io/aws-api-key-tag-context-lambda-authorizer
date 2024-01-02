@@ -2,8 +2,6 @@
 from os import getenv
 import boto3
 
-api_gateway_client = boto3.client("apigateway")
-
 AWS_REGION = getenv("AWS_REGION")
 
 PRINCIPAL_ID_TAG_NAME = getenv("PRINCIPAL_ID_TAG_NAME")
@@ -11,6 +9,19 @@ PRINCIPAL_ID_TAG_NAME = getenv("PRINCIPAL_ID_TAG_NAME")
 CONTEXT_TAG_PREFIX = getenv("CONTEXT_TAG_PREFIX", "context:")
 
 DEFAULT_PRINCIPAL_ID = getenv("DEFAULT_PRINCIPAL_ID")
+
+api_gateway_client = None
+
+
+def get_api_gateway_client():
+    """ Retrieve AWS API Gateway Management client """
+
+    global api_gateway_client
+
+    if api_gateway_client is None:
+        api_gateway_client = boto3.client("apigateway")
+
+    return api_gateway_client
 
 
 def find_first_header_value(request, header_name):
@@ -50,7 +61,7 @@ def find_api_key(request):
 
 
 def fetch_api_key(value):
-    pages = api_gateway_client.get_paginator("get_api_keys").paginate(
+    pages = get_api_gateway_client().get_paginator("get_api_keys").paginate(
         includeValues=True,
         PaginationConfig={
             'PageSize': 500
