@@ -1,0 +1,51 @@
+name: delivery
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel pytest
+          pip install -r requirements.txt
+      - name: Run tests
+        run: pytest
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.CD_AWS_ACCOUNT_ID }}:role/github-oidc-role
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Prepare CloudFormation stack
+        run: aws cloudformation package --template-file cfn-deploy.yml --s3-bucket "$S3_BUCKET" --s3-prefix artifacts/ApiKeyTagContextLambdaAuthorizer >cfn-deploy.packaged.yml
+        env:
+          S3_BUCKET: ${{ vars.CLOUDFORMATION_S3_BUCKET }}
+      - name: Deploy CloudFormation stack
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.CD_AWS_ACCOUNT_ID }}
+        with:
+          name: ApiKeyTagContextLambdaAuthorizer
+          template: cfn-deploy.packaged.yml
+          parameter-overrides: >-
+            AliasName=stag,
+            VersionDescription=${{ github.sha }}
+          no-fail-on-empty-changeset: 1
+          role-arn: "arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/cloudformation-deploy-role"
+          capabilities: CAPABILITY_IAM, CAPABILITY_NAMED_IAM, CAPABILITY_AUTO_EXPAND

@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: 'API Gateway Lambda authorizer that copies API key tags to request context'
+Parameters:
+  FunctionName:
+    Type: String
+    Description: 'The name to give to the function. Leave blank to generate automatically.'
+    Default: ApiKeyTagContextLambdaAuthorizer
+    AllowedPattern: '^[-a-zA-Z0-9_/]*$'
+    MinLength: 0
+    MaxLength: 64
+    ConstraintDescription: 'Blank or String of length 1-64 comprised of numbers, letters, and any of -_/'
+  PrincipalIdTagName:
+    Type: String
+    Description: 'The API key tag value to use as principal ID.'
+    Default: principal
+    AllowedPattern: '^[-a-zA-Z0-9.:+=@_/]+$'
+    MinLength: 1
+    MaxLength: 128
+    ConstraintDescription: 'String of length 1-128 comprised of numbers, letters, and any of -.:+=@_/'
+  ContextTagPrefix:
+    Type: String
+    Description: 'The prefix of API key tag names to copy to request context. Prefix is removed before adding to context.'
+    Default: "context:"
+    AllowedPattern: "^[-a-zA-Z0-9.:+=@_/]+$"
+    MinLength: 1
+    MaxLength: 127
+    ConstraintDescription: 'String of length 1-127 comprised of numbers, letters, and any of -.:+=@_/'
+  DefaultPrincipalId:
+    Type: String
+    Description: 'The default principal ID to assign if API has no principal tag. Leave blank to fail authorization on missing tag.'
+    Default: "user"
+    AllowedPattern: "^[-a-zA-Z0-9._]*$"
+    MinLength: 0
+    MaxLength: 80
+    ConstraintDescription: 'Blank or String of length 1-80 comprised of numbers, letters, and any of -._'
+  AliasName:
+    Type: String
+    Description: 'The Lambda alias to publish automatically on deploy. Leave blank not to publish an alias.'
+    Default: stag
+    AllowedPattern: "^(?!^[0-9]+$)([a-zA-Z0-9-_]+)$"
+    MinLength: 0
+    MaxLength: 128
+    ConstraintDescription: 'Blank or String of length 1-128 comprised of numbers, letters, and any of -_. Must not consist entirely of numbers.'
+  VersionDescription:
+    Type: String
+    Description: 'The description of the published version. Only relevant if AliasName is also given. Reasonable value is source code version. Leave blank not to give a description.'
+    Default: ''
+    MinLength: 0
+    MaxLength: 256
+    ConstraintDescription: 'Blank or String of length 1-256. May contain any characters.'
+Conditions:
+  DefaultPrincipalIdIsBlank: !Equals [ !Ref DefaultPrincipalId, "" ]
+  FunctionNameIsBlank: !Equals [ !Ref FunctionName, "" ]
+  AliasNameIsBlank: !Equals [ !Ref AliasName, "" ]
+  AliasNameOrVersionDescriptionIsBlank:
+    Fn::Or:
+      - !Equals [ !Ref AliasName, "" ]
+      - !Equals [ !Ref VersionDescription, "" ]
+Resources:
+  ApiGatewayLambdaAuthorizer:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !If [ FunctionNameIsBlank, !Ref 'AWS::NoValue', !Ref FunctionName ]
+      Handler: main.lambda_handler
+      Runtime: python3.12
+      CodeUri: .
+      Description: 'API Gateway Lambda Authorizer'
+      AutoPublishAlias: !If [ AliasNameIsBlank, !Ref 'AWS::NoValue', !Ref AliasName ]
+      VersionDescription: !If [ AliasNameOrVersionDescriptionIsBlank, !Ref 'AWS::NoValue', !Ref VersionDescription ]
+      Environment:
+        Variables:
+          PRINCIPAL_ID_TAG_NAME: !Ref PrincipalIdTagName
+          CONTEXT_TAG_PREFIX: !Ref ContextTagPrefix
+          DEFAULT_PRINCIPAL_ID: !If [ DefaultPrincipalIdIsBlank, !Ref 'AWS::NoValue', !Ref DefaultPrincipalId ]
+      MemorySize: 256
+      Timeout: 5
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: AllowReadApiKeys
+              Action:
+                - 'apigateway:GET'
+              Effect: Allow
+              Resource:
+                - !Sub 'arn:aws:apigateway:${AWS::Region}::/apikeys'
+                - !Sub 'arn:aws:apigateway:${AWS::Region}::/apikeys/*'
