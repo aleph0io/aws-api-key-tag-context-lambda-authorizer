@@ -25,6 +25,22 @@ In [metered billing](https://stripe.com/docs/billing/subscriptions/usage-based),
 
 Applications can append subscription ID, user ID, and other metadata to API Keys at key creation time. Next, they can make these data available in [access logs](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html) via the `$context` request parameter. Finally, they can report usage to using a [lambda log subscription filter](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html#LambdaFunctionExample) on the access logs.
 
+### Multitenant Usage Tracking
+
+It's important to provide customers with up-to-date usage information, particularly for APIs with hard quotas or metered billing. When multiple customers are using the same API, adding customer IDs to access logs allows for real-time usage information simply through log analysis.
+
+## Recommended Developer Workflow
+
+Authentication and Authorization are complex, so finding a (preferably simple) developer workflow that allows total control over deployment lifecycle is key. Find a proposed developer workflow below.
+
+* **Fork this repo.** Needs differ, so keeping a separate copy to customize is useful. At the very least, this will allow total control over CI/CD.
+* **Maintain a branch for each deployed Lambda authorizer.** This ensures that different authorizers with different logic are kept separate.
+* **Use Continuous Delivery to deploy updates.** Enable CD on each branch by copying and modifying `.github/workflows/deployment.yml.example` to run on pushes to the appropriate branch(es). Individual branches can be updated separately, giving the user total control over deployment lifecycle.
+* **Deploy to a fixed Lambda Alias.** Configure a non-production API stage to use this alias, which allows easy testing.
+* **Promote manually.** Configure the production API stage to use a different alias, e.g., `prod`. After testing is complete, point the `prod` alias at the same version as `stag`, thus promoting the staging code to production.
+
+The authorizer and CloudFormation template support this workflow out of the box.
+
 ## Customization
 
 ### CloudFormation Parameters
