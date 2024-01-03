@@ -36,7 +36,7 @@ Authentication and Authorization are complex, so finding a (preferably simple) d
 * **Fork this repo.** Needs differ, so keeping a separate copy to customize is useful. At the very least, this will allow total control over CI/CD.
 * **Maintain a branch for each deployed Lambda authorizer.** This ensures that different authorizers with different logic are kept separate.
 * **Use Continuous Delivery to deploy updates.** Enable CD on each branch by copying and modifying `.github/workflows/deployment.yml.example` to run on pushes to the appropriate branch(es). Individual branches can be updated separately, giving the user total control over deployment lifecycle.
-* **Deploy to a fixed Lambda Alias.** Configure a non-production API stage to use this alias, which allows easy testing.
+* **Deploy to a fixed Lambda Alias.** For example, the default is `stag`. Configure a non-production API stage to use this alias, which allows easy testing.
 * **Promote manually.** Configure the production API stage to use a different alias, e.g., `prod`. After testing is complete, point the `prod` alias at the same version as `stag`, thus promoting the staging code to production.
 
 The authorizer and CloudFormation template support this workflow out of the box.
