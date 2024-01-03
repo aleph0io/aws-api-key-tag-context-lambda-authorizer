@@ -1,6 +1,6 @@
 # aws-api-key-tag-context-lambda-authorizer [![integration](https://github.com/aleph0io/aws-api-key-tag-context-lambda-authorizer/actions/workflows/integration.yml/badge.svg)](https://github.com/aleph0io/aws-api-key-tag-context-lambda-authorizer/actions/workflows/integration.yml)
 
-Implements an [AWS API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html) [Lambda Authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html).
+Implements an [AWS API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html) [Lambda Authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html) that copies API key tags to request context for downstream processing.
 
 ## Introduction
 

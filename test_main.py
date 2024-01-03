@@ -1,6 +1,4 @@
-import pytest
-
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, Mock
 
 from main import find_first_header_value
 from main import find_api_key
@@ -10,33 +8,38 @@ from main import lambda_handler
 
 # lambda_handler
 def test_lambda_handler_api_key_missing():
-    with pytest.raises(Exception) as e:
+    try:
         lambda_handler({
             "headers": {}
         }, None)
-    assert str(e.value) == "Unauthorized"
+    except Exception as e:
+        assert str(e) == "Unauthorized"
+    else:
+        raise Exception("No exception thrown")
 
 
 @patch("main.get_api_gateway_client")
 def test_lambda_handler_api_key_does_not_exist(mock_get_api_gateway_client):
-    api_gateway_client_paginator = MagicMock()
+    api_gateway_client_paginator = Mock()
     api_gateway_client_paginator.paginate.return_value = [{
         "items": []
     }]
 
-    api_gateway_client = MagicMock()
+    api_gateway_client = Mock()
     api_gateway_client.get_paginator.return_value = api_gateway_client_paginator
 
     mock_get_api_gateway_client.return_value = api_gateway_client
 
-    with pytest.raises(Exception) as e:
+    try:
         lambda_handler({
             "headers": {
                 "authorization": "bearer hello"
             }
         }, None)
-
-    assert str(e.value) == "Unauthorized"
+    except Exception as e:
+        assert str(e) == "Unauthorized"
+    else:
+        raise Exception("No exception thrown")
 
 
 @patch("main.get_api_gateway_client")
@@ -44,7 +47,7 @@ def test_lambda_handler_api_key_does_not_exist(mock_get_api_gateway_client):
 @patch("main.PRINCIPAL_ID_TAG_NAME", "principal")
 @patch("main.AWS_REGION", "us-east-1")
 def test_lambda_handler_api_key_given_exists(mock_get_api_gateway_client):
-    api_gateway_client_paginator = MagicMock()
+    api_gateway_client_paginator = Mock()
     api_gateway_client_paginator.paginate.return_value = [{
         "items": [
             {
@@ -59,7 +62,7 @@ def test_lambda_handler_api_key_given_exists(mock_get_api_gateway_client):
         ]
     }]
 
-    api_gateway_client = MagicMock()
+    api_gateway_client = Mock()
     api_gateway_client.get_paginator.return_value = api_gateway_client_paginator
 
     mock_get_api_gateway_client.return_value = api_gateway_client
@@ -99,7 +102,7 @@ def test_lambda_handler_api_key_given_exists(mock_get_api_gateway_client):
 @patch("main.PRINCIPAL_ID_TAG_NAME", "doesnotexist")
 @patch("main.AWS_REGION", "us-east-1")
 def test_lambda_handler_api_key_given_exists_default_principal_id(mock_get_api_gateway_client):
-    api_gateway_client_paginator = MagicMock()
+    api_gateway_client_paginator = Mock()
     api_gateway_client_paginator.paginate.return_value = [{
         "items": [
             {
@@ -114,7 +117,7 @@ def test_lambda_handler_api_key_given_exists_default_principal_id(mock_get_api_g
         ]
     }]
 
-    api_gateway_client = MagicMock()
+    api_gateway_client = Mock()
     api_gateway_client.get_paginator.return_value = api_gateway_client_paginator
 
     mock_get_api_gateway_client.return_value = api_gateway_client
@@ -152,7 +155,7 @@ def test_lambda_handler_api_key_given_exists_default_principal_id(mock_get_api_g
 # fetch_api_key
 @patch("main.get_api_gateway_client")
 def test_fetch_api_key_missing(mock_get_api_gateway_client):
-    api_gateway_client_paginator = MagicMock()
+    api_gateway_client_paginator = Mock()
     api_gateway_client_paginator.paginate.return_value = [{
         "items": [
             {
@@ -162,7 +165,7 @@ def test_fetch_api_key_missing(mock_get_api_gateway_client):
         ]
     }]
 
-    api_gateway_client = MagicMock()
+    api_gateway_client = Mock()
     api_gateway_client.get_paginator.return_value = api_gateway_client_paginator
 
     mock_get_api_gateway_client.return_value = api_gateway_client
@@ -174,7 +177,7 @@ def test_fetch_api_key_missing(mock_get_api_gateway_client):
 
 @patch("main.get_api_gateway_client")
 def test_fetch_api_key_present(mock_get_api_gateway_client):
-    api_gateway_client_paginator = MagicMock()
+    api_gateway_client_paginator = Mock()
     api_gateway_client_paginator.paginate.return_value = [{
         "items": [
             {
@@ -188,7 +191,7 @@ def test_fetch_api_key_present(mock_get_api_gateway_client):
         ]
     }]
 
-    api_gateway_client = MagicMock()
+    api_gateway_client = Mock()
     api_gateway_client.get_paginator.return_value = api_gateway_client_paginator
 
     mock_get_api_gateway_client.return_value = api_gateway_client

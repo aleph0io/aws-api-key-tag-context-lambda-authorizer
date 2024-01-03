@@ -20,12 +20,12 @@ Parameters:
     ConstraintDescription: 'String of length 1-128 comprised of numbers, letters, and any of -.:+=@_/'
   ContextTagPrefix:
     Type: String
-    Description: 'The prefix of API key tag names to copy to request context. Prefix is removed before adding to context.'
+    Description: 'The prefix of API key tag names to copy to request context. Prefix is removed before adding to context. Leave blank to include all tags without modification.'
     Default: "context:"
     AllowedPattern: "^[-a-zA-Z0-9.:+=@_/]+$"
-    MinLength: 1
+    MinLength: 0
     MaxLength: 127
-    ConstraintDescription: 'String of length 1-127 comprised of numbers, letters, and any of -.:+=@_/'
+    ConstraintDescription: 'Blank or String of length 1-127 comprised of numbers, letters, and any of -.:+=@_/'
   DefaultPrincipalId:
     Type: String
     Description: 'The default principal ID to assign if API has no principal tag. Leave blank to fail authorization on missing tag.'
