@@ -1,4 +1,6 @@
 # This is a sample Python script.
+import base64
+import re
 from os import getenv
 import boto3
 
@@ -9,6 +11,8 @@ PRINCIPAL_ID_TAG_NAME = getenv("PRINCIPAL_ID_TAG_NAME")
 CONTEXT_TAG_PREFIX = getenv("CONTEXT_TAG_PREFIX", "context:")
 
 DEFAULT_PRINCIPAL_ID = getenv("DEFAULT_PRINCIPAL_ID")
+
+AUTHORIZATION_PLAN = getenv("AUTHORIZATION_PLAN", "authorization:bearer(plain)")
 
 api_gateway_client = None
 
@@ -44,20 +48,35 @@ def find_first_header_value(request, header_name):
     return value
 
 
+HEADER_AUTHORIZATION_PLAN_STEP = re.compile(r"header:([a-zA-Z0-9_-]+)[(][)]")
+
+AUTHORIZATION_AUTHORIZATION_PLAN_STEP = re.compile(r"authorization:bearer[(](plain|base64)[)]")
+
+
 def find_api_key(request):
     """ Extract bearer token if exists and is valid, or else None """
 
-    authorization = find_first_header_value(request, "authorization")
-    if authorization is None:
-        return None
-
-    parts = authorization.split(" ", 1)
-    if len(parts) != 2:
-        return None
-    if parts[0].lower() != "bearer":
-        return None
-
-    return parts[1]
+    authorization_plan_steps = AUTHORIZATION_PLAN.split(",")
+    for authorization_plan_step in authorization_plan_steps:
+        if AUTHORIZATION_AUTHORIZATION_PLAN_STEP.fullmatch(authorization_plan_step) is not None:
+            match = AUTHORIZATION_AUTHORIZATION_PLAN_STEP.fullmatch(authorization_plan_step)
+            instruction = match.group(1)
+            authorization = find_first_header_value(request, "authorization")
+            if authorization is not None:
+                parts = authorization.split(" ", 1)
+                if len(parts) == 2 and parts[0].lower() == "bearer":
+                    token = parts[1]
+                    if instruction == "base64":
+                        token = base64.b64decode(token).decode("utf-8")
+                    return token
+        elif HEADER_AUTHORIZATION_PLAN_STEP.fullmatch(authorization_plan_step) is not None:
+            match = HEADER_AUTHORIZATION_PLAN_STEP.fullmatch(authorization_plan_step)
+            header_name = match.group(1)
+            header_value = find_first_header_value(request, header_name)
+            if header_value is not None:
+                return header_value
+        else:
+            print("WARNING: Ignoring unrecognized authorization plan step: " + authorization_plan_step)
 
 
 def fetch_api_key(value):

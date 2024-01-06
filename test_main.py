@@ -223,16 +223,58 @@ def test_find_first_header_value_present_multiple():
 
 
 # find_api_key
-def test_find_api_key_absent():
+@patch("main.AUTHORIZATION_PLAN", "authorization:bearer(plain)")
+def test_find_api_key_authorization_bearer_absent():
     api_key = find_api_key({"headers": {}})
     assert api_key is None
 
 
-def test_find_api_key_present_not_bearer():
+@patch("main.AUTHORIZATION_PLAN", "authorization:bearer(plain)")
+def test_find_api_key_authorization_bearer_present_not_bearer():
     api_key = find_api_key({"headers": {"authorization": "foobar hello"}})
     assert api_key is None
 
 
-def test_find_api_key_present_bearer():
+@patch("main.AUTHORIZATION_PLAN", "authorization:bearer(plain)")
+def test_find_api_key_authorization_bearer_present_plain_bearer():
     api_key = find_api_key({"headers": {"authorization": "bearer hello"}})
     assert api_key == "hello"
+
+
+@patch("main.AUTHORIZATION_PLAN", "authorization:bearer(base64)")
+def test_find_api_key_authorization_bearer_present_base64_bearer():
+    api_key = find_api_key({"headers": {"authorization": "bearer aGVsbG8="}})
+    assert api_key == "hello"
+
+
+@patch("main.AUTHORIZATION_PLAN", "authorization:bearer(plain),header:alpha-bravo-charlie()")
+def test_find_api_key_present_first_one_wins():
+    api_key = find_api_key({
+        "headers": {
+            "authorization": "bearer zulu",
+            "alpha-bravo-charlie": "yankee"
+        }
+    })
+    assert api_key == "zulu"
+
+
+@patch("main.AUTHORIZATION_PLAN", "authorization:bearer(plain),header:alpha-bravo-charlie()")
+def test_find_api_key_present_second_one_works():
+    api_key = find_api_key({
+        "headers": {
+            "alpha-bravo-charlie": "yankee"
+        }
+    })
+    assert api_key == "yankee"
+
+
+@patch("main.AUTHORIZATION_PLAN", "header:alpha-bravo-charlie()")
+def test_find_api_key_header_present():
+    api_key = find_api_key({"headers": {"alpha-bravo-charlie": "yankee"}})
+    assert api_key == "yankee"
+
+
+@patch("main.AUTHORIZATION_PLAN", "header:alpha-bravo-charlie()")
+def test_find_api_key_header_absent():
+    api_key = find_api_key({"headers": {}})
+    assert api_key is None
