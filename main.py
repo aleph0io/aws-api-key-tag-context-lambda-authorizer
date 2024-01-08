@@ -93,8 +93,8 @@ def lambda_handler(request, context):
     api_id = request_context["apiId"]
     api_stage = request_context["stage"]
 
-    # Grab our API key tags
-    tags = api_key["tags"]
+    # Grab our API key tags. The tags key only exists if tags are present, so be defensive.
+    tags = api_key.get("tags", {})
 
     # Grab our principal ID from our tags
     principal_id = DEFAULT_PRINCIPAL_ID
