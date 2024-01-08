@@ -6,15 +6,21 @@ Parameters:
     Type: String
     Description: 'The name to give to the function. Leave blank to generate automatically.'
     Default: ApiKeyTagContextLambdaAuthorizer
-    AllowedPattern: '^[-a-zA-Z0-9_/]*$'
+    AllowedPattern: '[-a-zA-Z0-9_/]*'
     MinLength: 0
     MaxLength: 64
     ConstraintDescription: 'Blank or String of length 1-64 comprised of numbers, letters, and any of -_/'
+  AuthorizationPlan:
+    Type: CommaDelimitedList
+    Description: 'A list of one or more places to look for the request API key, first one wins'
+    Default: 'authorization:bearer(plain)'
+    AllowedPattern: 'authorization:bearer[(]plain[)]|authorization:bearer[(]base64[)]|header:[a-zA-Z0-9_-]+[(][)]'
+    ConstraintDescription: 'Any of the following: authorization:bearer(plain), authorization:bearer(base64), header:$HEADER_NAME()'
   PrincipalIdTagName:
     Type: String
     Description: 'The API key tag value to use as principal ID.'
     Default: principal
-    AllowedPattern: '^[-a-zA-Z0-9.:+=@_/]+$'
+    AllowedPattern: '[-a-zA-Z0-9.:+=@_/]+'
     MinLength: 1
     MaxLength: 128
     ConstraintDescription: 'String of length 1-128 comprised of numbers, letters, and any of -.:+=@_/'
@@ -22,7 +28,7 @@ Parameters:
     Type: String
     Description: 'The prefix of API key tag names to copy to request context. Prefix is removed before adding to context. Leave blank to include all tags without modification.'
     Default: "context:"
-    AllowedPattern: "^[-a-zA-Z0-9.:+=@_/]+$"
+    AllowedPattern: "[-a-zA-Z0-9.:+=@_/]+"
     MinLength: 0
     MaxLength: 127
     ConstraintDescription: 'Blank or String of length 1-127 comprised of numbers, letters, and any of -.:+=@_/'
@@ -30,7 +36,7 @@ Parameters:
     Type: String
     Description: 'The default principal ID to assign if API has no principal tag. Leave blank to fail authorization on missing tag.'
     Default: "user"
-    AllowedPattern: "^[-a-zA-Z0-9._]*$"
+    AllowedPattern: "[-a-zA-Z0-9._]*"
     MinLength: 0
     MaxLength: 80
     ConstraintDescription: 'Blank or String of length 1-80 comprised of numbers, letters, and any of -._'
@@ -38,7 +44,7 @@ Parameters:
     Type: String
     Description: 'The Lambda alias to publish automatically on deploy. Leave blank not to publish an alias.'
     Default: stag
-    AllowedPattern: "^(?!^[0-9]+$)([a-zA-Z0-9-_]+)$"
+    AllowedPattern: "(?!^[0-9]+$)([a-zA-Z0-9-_]+)"
     MinLength: 0
     MaxLength: 128
     ConstraintDescription: 'Blank or String of length 1-128 comprised of numbers, letters, and any of -_. Must not consist entirely of numbers.'
@@ -70,6 +76,7 @@ Resources:
       VersionDescription: !If [ AliasNameOrVersionDescriptionIsBlank, !Ref 'AWS::NoValue', !Ref VersionDescription ]
       Environment:
         Variables:
+          AUTHORIZATION_PLAN: !Join [ ",", !Ref AuthorizationPlan ]
           PRINCIPAL_ID_TAG_NAME: !Ref PrincipalIdTagName
           CONTEXT_TAG_PREFIX: !Ref ContextTagPrefix
           DEFAULT_PRINCIPAL_ID: !If [ DefaultPrincipalIdIsBlank, !Ref 'AWS::NoValue', !Ref DefaultPrincipalId ]

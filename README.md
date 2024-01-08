@@ -48,6 +48,10 @@ The authorizer and CloudFormation template support this workflow out of the box.
 The implementation supports several important customizations out of the box in the form of CloudFormation template parameters:
 
 * `FunctionName` - An explicit name for the authorizer Lambda function. Useful to make ARN predictable. If left blank, a name will be generated automatically.
+* `AuthorizationPlan` - A comma-separated (`,`) list of one or more places to look for an API key, first one wins:
+  * `authorization:bearer(plain)` - A [bearer token](https://datatracker.ietf.org/doc/html/rfc6750) in plain text
+  * `authorization:bearer(base64)` - A [bearer token](https://datatracker.ietf.org/doc/html/rfc6750) in base64 encoding
+  * `header:$HEADER_NAME()` - An HTTP header of the given name contains the API key
 * `PrincipalIdTagName` - The API key tag name to extract the request [`principalId`](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-lambda-authorizer-output.html) from.
 * `ContextTagPrefix` - A prefix to use to decide which API key tags to include in request context. The prefix value is removed from tag keys before copying to request context. If left blank, then all tags are copied to request context without modification.
 * `DefaultPrincipalId` - The default value to use for [`principalId`](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-lambda-authorizer-output.html) if the given `PrincipalIdTagName` tag is missing. Leave blank to cause authentication to fail in this case.
@@ -56,9 +60,8 @@ The implementation supports several important customizations out of the box in t
 
 ### Other
 
-Of course, users are free to modify however they like, but the following changes are expected:
+Of course, users are free to modify however they like, but changes like the following are expected:
 
-* Change approach to extracting API key (e.g., `x-api-key` header instead of bearer token)
 * Different approaches to loading API keys, e.g., [`customerId`](https://docs.aws.amazon.com/apigateway/latest/api/API_GetApiKeys.html#API_GetApiKeys_RequestSyntax)
 * Custom access policies
 * Append additional, bespoke request context
