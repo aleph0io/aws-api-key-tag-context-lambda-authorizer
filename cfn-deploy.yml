@@ -42,12 +42,12 @@ Parameters:
     ConstraintDescription: 'Blank or String of length 1-80 comprised of numbers, letters, and any of -._'
   AliasName:
     Type: String
-    Description: 'The Lambda alias to publish automatically on deploy. Leave blank not to publish an alias.'
+    Description: 'The Lambda alias to publish automatically on deploy.'
     Default: stag
     AllowedPattern: "(?!^[0-9]+$)([a-zA-Z0-9-_]+)"
     MinLength: 0
     MaxLength: 128
-    ConstraintDescription: 'Blank or String of length 1-128 comprised of numbers, letters, and any of -_. Must not consist entirely of numbers.'
+    ConstraintDescription: 'String of length 1-128 comprised of numbers, letters, and any of -_. Must not consist entirely of numbers.'
   VersionDescription:
     Type: String
     Description: 'The description of the published version. Only relevant if AliasName is also given. Reasonable value is source code version. Leave blank not to give a description.'
@@ -58,11 +58,7 @@ Parameters:
 Conditions:
   DefaultPrincipalIdIsBlank: !Equals [ !Ref DefaultPrincipalId, "" ]
   FunctionNameIsBlank: !Equals [ !Ref FunctionName, "" ]
-  AliasNameIsBlank: !Equals [ !Ref AliasName, "" ]
-  AliasNameOrVersionDescriptionIsBlank:
-    Fn::Or:
-      - !Equals [ !Ref AliasName, "" ]
-      - !Equals [ !Ref VersionDescription, "" ]
+  VersionDescriptionIsBlank: !Equals [ !Ref VersionDescription, "" ]
 Resources:
   ApiGatewayLambdaAuthorizer:
     Type: 'AWS::Serverless::Function'
@@ -72,8 +68,8 @@ Resources:
       Runtime: python3.12
       CodeUri: .
       Description: 'API Gateway Lambda Authorizer'
-      AutoPublishAlias: !If [ AliasNameIsBlank, !Ref 'AWS::NoValue', !Ref AliasName ]
-      VersionDescription: !If [ AliasNameOrVersionDescriptionIsBlank, !Ref 'AWS::NoValue', !Ref VersionDescription ]
+      AutoPublishAlias: !Ref AliasName
+      VersionDescription: !If [ VersionDescriptionIsBlank, !Ref 'AWS::NoValue', !Ref VersionDescription ]
       Environment:
         Variables:
           AUTHORIZATION_PLAN: !Join [ ",", !Ref AuthorizationPlan ]
