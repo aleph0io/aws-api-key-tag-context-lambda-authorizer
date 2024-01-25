@@ -16,6 +16,11 @@ Parameters:
     Default: 'authorization:bearer(plain)'
     AllowedPattern: 'authorization:bearer[(]plain[)]|authorization:bearer[(]base64[)]|header:[a-zA-Z0-9_-]+[(][)]'
     ConstraintDescription: 'Any of the following: authorization:bearer(plain), authorization:bearer(base64), header:$HEADER_NAME()'
+  CopyRequestHeaders:
+    Type: CommaDelimitedList
+    Description: 'A list of zero or more request headers to copy to request context. Leave blank to copy none.'
+    AllowedPattern: '[-a-zA-Z0-9]{1,64}'
+    ConstraintDescription: 'Blank or one or more strings of length 1-64 comprised of numbers, letters, and any of -'
   PrincipalIdTagName:
     Type: String
     Description: 'The API key tag value to use as principal ID.'
@@ -59,6 +64,7 @@ Conditions:
   DefaultPrincipalIdIsBlank: !Equals [ !Ref DefaultPrincipalId, "" ]
   FunctionNameIsBlank: !Equals [ !Ref FunctionName, "" ]
   VersionDescriptionIsBlank: !Equals [ !Ref VersionDescription, "" ]
+  CopyRequestHeadersIsBlank: !Equals [ !Join [ ",", !Ref CopyRequestHeaders ], "" ]
 Resources:
   ApiGatewayLambdaAuthorizer:
     Type: 'AWS::Serverless::Function'
@@ -73,6 +79,7 @@ Resources:
       Environment:
         Variables:
           AUTHORIZATION_PLAN: !Join [ ",", !Ref AuthorizationPlan ]
+          COPY_REQUEST_HEADERS: !If [ CopyRequestHeadersIsBlank, !Ref 'AWS::NoValue', !Join [ ",", !Ref CopyRequestHeaders ] ]
           PRINCIPAL_ID_TAG_NAME: !Ref PrincipalIdTagName
           CONTEXT_TAG_PREFIX: !Ref ContextTagPrefix
           DEFAULT_PRINCIPAL_ID: !If [ DefaultPrincipalIdIsBlank, !Ref 'AWS::NoValue', !Ref DefaultPrincipalId ]
