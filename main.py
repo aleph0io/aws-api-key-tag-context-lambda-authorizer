@@ -208,7 +208,8 @@ def lambda_handler(request, context):
     api_key_cached = False
     if api_key is None:
         api_key = get_api_key_cache_entry(api_key_value)
-        api_key_cached = True
+        if api_key is not None:
+            api_key_cached = True
     if api_key is None:
         api_key = fetch_api_key(api_key_value)
     if api_key is None:

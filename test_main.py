@@ -109,15 +109,7 @@ def test_lambda_handler_api_key_given_exists_cached_not_expired(
         "usageIdentifierKey": "hello"
     }
 
-    mock_put_api_key_cache_entry.verify_called_with({
-        "id": "alpha",
-        "value": "hello",
-        "tags": {
-            "foo": "bar",
-            "principal": "principal_id",
-            "context:bravo": "charlie"
-        }
-    })
+    mock_put_api_key_cache_entry.assert_not_called()
 
     mock_fetch_api_key.assert_not_called()
 
@@ -203,6 +195,7 @@ def test_lambda_handler_api_key_given_exists_cached_expired(
     })
 
     mock_fetch_api_key.verify_called_with("hello")
+
 
 @patch("main.get_api_gateway_client")
 @patch("main.get_api_key_cache_entry")
