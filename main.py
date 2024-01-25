@@ -14,6 +14,8 @@ DEFAULT_PRINCIPAL_ID = getenv("DEFAULT_PRINCIPAL_ID")
 
 AUTHORIZATION_PLAN = getenv("AUTHORIZATION_PLAN", "authorization:bearer(plain)")
 
+COPY_REQUEST_HEADERS = getenv("COPY_REQUEST_HEADERS", "")
+
 api_gateway_client = None
 
 
@@ -122,6 +124,9 @@ def lambda_handler(request, context):
     if principal_id is None:
         raise Exception("Unauthorized")
 
+    # What headers do we need to copy from the request to the context?
+    copy_request_headers = COPY_REQUEST_HEADERS.split(",") if COPY_REQUEST_HEADERS != "" else []
+
     # Now compute our context from our tags
     context = {}
     context_prefix = CONTEXT_TAG_PREFIX
@@ -129,6 +134,10 @@ def lambda_handler(request, context):
     for (k, v) in tags.items():
         if k.startswith(context_prefix):
             context[k[context_prefix_len:]] = v
+    for header_name in copy_request_headers:
+        header_value = find_first_header_value(request, header_name)
+        if header_value is not None:
+            context[header_name] = header_value
 
     return {
         "principalId": principal_id,
