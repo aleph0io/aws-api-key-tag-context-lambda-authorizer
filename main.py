@@ -137,7 +137,8 @@ def lambda_handler(request, context):
     for header_name in copy_request_headers:
         header_value = find_first_header_value(request, header_name)
         if header_value is not None:
-            context[header_name] = header_value
+            context_name = header_name.replace("-", "_")
+            context[context_name] = header_value
 
     return {
         "principalId": principal_id,
