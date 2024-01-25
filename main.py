@@ -3,6 +3,7 @@ import base64
 import re
 from os import getenv
 import boto3
+import time
 
 AWS_REGION = getenv("AWS_REGION")
 
@@ -16,7 +17,15 @@ AUTHORIZATION_PLAN = getenv("AUTHORIZATION_PLAN", "authorization:bearer(plain)")
 
 COPY_REQUEST_HEADERS = getenv("COPY_REQUEST_HEADERS", "")
 
+CACHE_TABLE_NAME = getenv("CACHE_TABLE_NAME")
+
+MAX_API_KEY_CACHE_AGE_SECONDS = int(getenv("MAX_API_KEY_CACHE_AGE", "300"))
+
 api_gateway_client = None
+
+
+def current_time_epoch():
+    return int(time.time())
 
 
 def get_api_gateway_client():
@@ -28,6 +37,20 @@ def get_api_gateway_client():
         api_gateway_client = boto3.client("apigateway")
 
     return api_gateway_client
+
+
+dynamodb_client = None
+
+
+def get_dynanodb_client():
+    """ Retrieve AWS DynamoDB client """
+
+    global dynamodb_client
+
+    if dynamodb_client is None:
+        dynamodb_client = boto3.client("dynamodb")
+
+    return dynamodb_client
 
 
 def find_first_header_value(request, header_name):
@@ -55,7 +78,7 @@ HEADER_AUTHORIZATION_PLAN_STEP = re.compile(r"header:([a-zA-Z0-9_-]+)[(][)]")
 AUTHORIZATION_AUTHORIZATION_PLAN_STEP = re.compile(r"authorization:bearer[(](plain|base64)[)]")
 
 
-def find_api_key(request):
+def find_api_key_in_request(request):
     """ Extract bearer token if exists and is valid, or else None """
 
     authorization_plan_steps = AUTHORIZATION_PLAN.split(",")
@@ -81,6 +104,83 @@ def find_api_key(request):
             print("WARNING: Ignoring unrecognized authorization plan step: " + authorization_plan_step)
 
 
+def get_api_key_cache_entry(value, now=None):
+    """ Check the cache for the given API key value """
+
+    # If we're not caching, then return None
+    if MAX_API_KEY_CACHE_AGE_SECONDS <= 0:
+        return None
+
+    # If no timestamp was provided, use the current time
+    if now is None:
+        now = current_time_epoch()
+
+    # Read from the cache
+    response = get_dynanodb_client().get_item(
+        TableName=CACHE_TABLE_NAME,
+        Key={
+            "value": {
+                "S": value
+            }
+        })
+
+    # If we found a value, return it
+    if "Item" in response:
+        # Get the item
+        item = response["Item"]
+
+        # Get the item's age
+        timestamp = int(item["timestamp"]["N"])
+        if now - timestamp > MAX_API_KEY_CACHE_AGE_SECONDS:
+            return None
+
+        # Convert to native Python object
+        id = item["id"]["S"]
+        tags = {k: v["S"] for (k, v) in item["tags"]["M"].items()}
+
+        return {
+            "id": id,
+            "value": value,
+            "tags": tags
+        }
+
+    return None
+
+
+def put_api_key_cache_entry(api_key, now = None):
+    """ Put the given item into the cache for the given API key value """
+
+    # If we're not caching, then return None
+    if MAX_API_KEY_CACHE_AGE_SECONDS <= 0:
+        return
+
+    # If no timestamp was provided, use the current time
+    if now is None:
+        now = current_time_epoch()
+
+    # Write to the cache
+    get_dynanodb_client().put_item(
+        TableName=CACHE_TABLE_NAME,
+        Item={
+            "id": {
+                "S": api_key["id"]
+            },
+            "value": {
+                "S": api_key["value"]
+            },
+            "timestamp": {
+                "N": str(now)
+            },
+            "tags": {
+                "M": {
+                    k: {
+                        "S": v
+                    } for (k, v) in api_key["tags"].items()
+                }
+            }
+        })
+
+
 def fetch_api_key(value):
     pages = get_api_gateway_client().get_paginator("get_api_keys").paginate(
         includeValues=True,
@@ -99,14 +199,24 @@ def fetch_api_key(value):
 def lambda_handler(request, context):
     # Get the API key value
     # TODO Implement other schemes for extracting API key from request
-    api_key_value = find_api_key(request)
+    api_key_value = find_api_key_in_request(request)
     if api_key_value is None:
         raise Exception("Unauthorized")
 
     # TODO Implement other schemes for looking up API key from API Gateway API
-    api_key = fetch_api_key(api_key_value)
+    api_key = None
+    api_key_cached = False
+    if api_key is None:
+        api_key = get_api_key_cache_entry(api_key_value)
+        api_key_cached = True
+    if api_key is None:
+        api_key = fetch_api_key(api_key_value)
     if api_key is None:
         raise Exception("Unauthorized")
+
+    # If we didn't find the API key in the cache, then put it there
+    if not api_key_cached:
+        put_api_key_cache_entry(api_key)
 
     # Let's extract some important facts about this API request
     request_context = request["requestContext"]

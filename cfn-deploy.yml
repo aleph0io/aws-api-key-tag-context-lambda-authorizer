@@ -60,12 +60,27 @@ Parameters:
     MinLength: 0
     MaxLength: 256
     ConstraintDescription: 'Blank or String of length 1-256. May contain any characters.'
+  MaxApiKeyCacheAgeSeconds:
+    Type: Number
+    Description: 'The maximum age of an API key cache entry in seconds. Set 0 to disable caching.'
+    Default: 300
+    MinValue: 0
+    MaxValue: 86400
+    ConstraintDescription: 'An integer from 0 to 86400, inclusive'
 Conditions:
   DefaultPrincipalIdIsBlank: !Equals [ !Ref DefaultPrincipalId, "" ]
   FunctionNameIsBlank: !Equals [ !Ref FunctionName, "" ]
   VersionDescriptionIsBlank: !Equals [ !Ref VersionDescription, "" ]
   CopyRequestHeadersIsBlank: !Equals [ !Join [ ",", !Ref CopyRequestHeaders ], "" ]
 Resources:
+  ApiGatewayLambdaAuthorizerCache:
+    Type: 'AWS::Serverless::SimpleTable'
+    Properties:
+      TableName: !If [ FunctionNameIsBlank, !Ref 'AWS::NoValue', !Sub "${FunctionName}Cache" ]
+      PrimaryKey:
+        Name: value
+        Type: String
+
   ApiGatewayLambdaAuthorizer:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -83,6 +98,8 @@ Resources:
           PRINCIPAL_ID_TAG_NAME: !Ref PrincipalIdTagName
           CONTEXT_TAG_PREFIX: !Ref ContextTagPrefix
           DEFAULT_PRINCIPAL_ID: !If [ DefaultPrincipalIdIsBlank, !Ref 'AWS::NoValue', !Ref DefaultPrincipalId ]
+          MAX_API_KEY_CACHE_AGE_SECONDS: !Ref MaxApiKeyCacheAgeSeconds
+          CACHE_TABLE_NAME: !Ref ApiGatewayLambdaAuthorizerCache
       MemorySize: 256
       Timeout: 5
       Policies:
@@ -96,3 +113,12 @@ Resources:
               Resource:
                 - !Sub 'arn:aws:apigateway:${AWS::Region}::/apikeys'
                 - !Sub 'arn:aws:apigateway:${AWS::Region}::/apikeys/*'
+            - Sid: AllowCacheApiKeys
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Effect: Allow
+              Resource:
+                - Fn::Sub:
+                    - "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TableName}"
+                    - TableName: !Ref ApiGatewayLambdaAuthorizerCache
