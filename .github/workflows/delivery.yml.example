@@ -38,8 +38,6 @@ jobs:
           S3_BUCKET: ${{ vars.CLOUDFORMATION_S3_BUCKET }}
       - name: Deploy CloudFormation stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
-        env:
-          AWS_ACCOUNT_ID: ${{ vars.CD_AWS_ACCOUNT_ID }}
         with:
           name: ApiKeyTagContextLambdaAuthorizer
           template: cfn-deploy.packaged.yml
@@ -47,5 +45,5 @@ jobs:
             AliasName=stag,
             VersionDescription=${{ github.sha }}
           no-fail-on-empty-changeset: 1
-          role-arn: "arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/cloudformation-deploy-role"
+          role-arn: "arn:aws:iam::${{ vars.CD_AWS_ACCOUNT_ID }}:role/cloudformation-deploy-role"
           capabilities: CAPABILITY_IAM, CAPABILITY_NAMED_IAM, CAPABILITY_AUTO_EXPAND
